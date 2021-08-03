@@ -28,7 +28,7 @@
     \nextdef
     & \fun{txscriptfee} \in \Prices \to \ExUnits \to \Coin \\
     & \fun{txscriptfee}~(pr_{mem}, pr_{steps})~ (\var{mem, steps})
-    = \var{pr_{mem}}*\var{mem} + \var{pr_{steps}}*\var{steps}
+    = \fun{ceiling}~(\var{pr_{mem}}*\var{mem} + \var{pr_{steps}}*\var{steps})
     \nextdef
     &\fun{minfee} \in \PParams \to \Tx \to \Coin \\
     &\fun{minfee}~\var{pp}~\var{tx} = \\
@@ -63,7 +63,8 @@ We have added or changed several functions that deal with fees and collateral as
   calling the $\fun{feesOK}$ function that ensure that this is the case.
   \item $\fun{txscriptfee}$ calculates the fee that a transaction must pay for script
   execution based on the amount of $\ExUnits$ it has budgeted, and the prices in the current protocol parameters
-  for each component of $\ExUnits$.
+  for each component of $\ExUnits$. The prices are expressed as rational numbers,
+  so we take the ceiling of the result of the calculation to get an integer-valued $\Coin$.
   \item The minimum fee calculation, $\fun{minfee}$, includes the script
   fees that the transaction is obligated to pay in order to run its scripts.
 \end{itemize}
