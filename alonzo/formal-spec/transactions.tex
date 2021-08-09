@@ -162,7 +162,7 @@ We add the following helper functions:
        & \times~ \Wdrl  & \fun{txwdrls} &\text{Reward withdrawals}\\
        & \times ~\Update^?  & \fun{txUpdates} & \text{Update proposals}\\
        & \times ~\hldiff{\powerset{\KeyHash}} & \hldiff{\fun{reqSignerHashes}} & \text{Hashes of VKeys passed to scripts}\\
-       & \times ~\hldiff{\WitnessPPDataHash^?} & \hldiff{\fun{wppHash}} & \text{Hash of script-related data}\\
+       & \times ~\hldiff{\WitnessPPDataHash^?} & \hldiff{\fun{scriptIntegrityHash}} & \text{Hash of script-related data}\\
        & \times ~\hldiff{\Network^?} & \hldiff{\fun{txnetworkid}} & \text{Tx network ID}\\
     \end{array}
   \end{equation*}
@@ -245,7 +245,7 @@ the body of the transaction:
   the transaction and the ledger are otherwise unaware of what signatures are expected by these scripts.
 
   \item We include a hash of some script-related data, specifically the redeemers and protocol parameters,
-    with accessor $\fun{wppHash}$.
+    with accessor $\fun{scriptIntegrityHash}$.
 
   \item We include the ID of the network on which the transaction lives, $\fun{txnetworkid}$.
   This is in addition to the network ID's already included in the reward and output addresses.

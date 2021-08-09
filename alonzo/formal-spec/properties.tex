@@ -477,7 +477,7 @@ We split this result into a lemma and its corollary :
       examines four fields fixed by the transaction body ($\fun{mint}$, $\fun{txwdrls}$,
       $\fun{txcerts}$, and $\fun{txinputs}$).
       It also looks at data in the $\fun{txrdmrs}$ field, which is fixed
-      by the transaction body via the $\fun{wppHash}$
+      by the transaction body via the $\fun{scriptIntegrityHash}$
       hash. This is done as follows: the $\mathsf{UTXOW}$ rule verifies that this
       hash-containing field matches the computed hash
       of the preimage constructed from several fields of the transaction,
@@ -487,7 +487,7 @@ We split this result into a lemma and its corollary :
       \item $\fun{language}$ : this is directly conveyed by the type of a script.
 
       \item $\fun{costmdls}$ : The hash calculated by the $\fun{hashWitnessPPData}$
-      function and compared to the hash value in the $\fun{wppHash}$ field
+      function and compared to the hash value in the $\fun{scriptIntegrityHash}$ field
       must include in the preimage the current cost models of
       all script languages of scripts carried by the transaction. Recall that
       if a cost model changed between when a transaction was submitted and the
@@ -523,7 +523,7 @@ We split this result into a lemma and its corollary :
 
         \item $\fun{txInfoData}$ : this field is populated with the datums (and their
         hashes) in the transaction field $\fun{txdats}$, which are fixed by the body
-        via the $\fun{wppHash}$ field.
+        via the $\fun{scriptIntegrityHash}$ field.
 
         \item $\fun{txInfoId}$ : this field contains the hash of the transaction body,
         which is clearly the same for transactions with the same body.
@@ -671,7 +671,7 @@ of a transaction --- see Figure \ref{fig:zipped-types}.
     \where \\
     \fun{field}~(\fun{ziptx}~({tx},~{utxo},~{pp}))~=~\\
       \begin{cases}
-        \fun{field}~\var{tx} & \fun{field} \notin \{\fun{txinputs},~\fun{collateral},~\fun{txouts},~\fun{txcerts},~\fun{mint},~\fun{txwdrls},~\fun{wppHash}\} \\
+        \fun{field}~\var{tx} & \fun{field} \notin \{\fun{txinputs},~\fun{collateral},~\fun{txouts},~\fun{txcerts},~\fun{mint},~\fun{txwdrls},~\fun{scriptIntegrityHash}\} \\
         \fun{txinputs}_{zip}~{tx}~({txins},~{utxo},~{pp}) & \fun{field}~=~\fun{txinputs} ~~\vee~~\fun{field}~=~ \fun{collateral}\\
         \fun{field}_{zip}~{tx}~(\fun{field}~{tx}) & \text{otherwise} \\
       \end{cases}
