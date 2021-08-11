@@ -17,8 +17,11 @@ some special treatment of any specific tokens if needed.
 In Figure \ref{fig:no-special-ada}, we give the $\ValMonoid$ functions for
 the $\Value'$ type, which has no special case for Ada. That is, the policy and
 asset name for it are chosen as a term of the corresponding type. This means
-that Ada indeed has a minting policy, and could potentially have several
-asset names scoped under this policy. \\~\\
+that Ada indeed has a minting policy, $\mathsf{AdaPolicyID}$. It must be specified in
+order to implementat of this version of token bundles, but we leave abstract here.
+Ada could potentially have several asset names scoped under this policy, although
+practically this would not line up with the current ledger conception of Ada.
+We call Ada's asset name $\mathsf{AdaName}$, and leave it unspecified here. \\~\\
 
 \begin{figure*}[t!]
   \emph{Constants}
@@ -68,7 +71,8 @@ The $\Value_C$ type and the associated functions, shown in Figure \ref{fig:speci
 give a $\ValMonoid$ which is isomorphic to the $\Value$ we defined in
 Section \ref{sec:coin-ma}. Both constructs
 specify all non-Ada tokens via the unique identifier $(\PolicyID \times \AssetName)$, and
-have a special case for Ada. Both do not admit a minting policy or asset names for Ada.
+have a special case for Ada. Neither token bundle definition
+admits a minting policy or an asset name for Ada.
 
 The isomorphism between the two types is defined in Figure \ref{fig:iso-v}.
 All $\ValMonoid$ operations on the $\Value$ and $\Value_C$ types commute with this
@@ -102,9 +106,6 @@ is an optimized internal representation.
     \nextdef
     %
     & \fun{inject}~c  ~=~ (c, \Nothing)
-    \nextdef
-    %
-    & \fun{modifyCoin}~f~(c, v)  ~=~ \var{(f(c), v)}
     \nextdef
     %
     & \fun{size} ~~~ \text{see Section \ref{sec:value-size}}

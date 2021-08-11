@@ -32,6 +32,13 @@
     \nextdef
     & \fun{ubalance} \in \UTxO \to \hldiff{\ValMonoid} \\
     & \fun{ubalance} ~ utxo = \hldiff{\sum_{\wcard\mapsto\var{u}\in~\var{utxo}} \fun{getValue}~\var{u}}
+    \nextdef
+    & \fun{scaledMinDeposit} \in \ValMonoid \to \Coin \to \Coin \\
+    & \fun{scaledMinDeposit}~\var{v}~\var{mv} ~=~
+    \begin{cases}
+      \var{mv} & \fun{adaOnly}~v \\
+      \fun{max}~(\var{mv},~\fun{utxoEntrySize}~{v} * \fun{coinsPerUTxOWord}~mv)) & \text{otherwise}
+    \end{cases}
   \end{align*}
   %
   \emph{Produced and Consumed Calculations}
@@ -129,7 +136,7 @@ of this rule as compared to the original Shelley UTXO rule:
     The amount of ada that is contained in the constraint $\ValMonoid$ term (and
     hence the $\ValMonoid$ term in the output itself must contain at least as much) depends on the
     size of the output. To get the minimum ada amount, the size of the output is multiplied by
-    the function $\var{adaPerUTxOWord}$ applied to protocol parameters
+    the function $\var{coinsPerUTxOWord}$ applied to protocol parameters
     (see Section~\ref{sec:value-size} for the function definition).
     Note that this check implies that no quantity of any token appearing in that output can be
     negative.
@@ -179,7 +186,7 @@ $\Coin$.
       ~\\
       \hldiff{\forall txout \in \txouts{txb},} \\
       \hldiff{\fun{getValue}~txout \geq} \\
-      \hldiff{\fun{inject}~(\fun{max}~(\var{minUTxOValue}~pp,~\fun{utxoEntrySize}~{txout} * \fun{adaPerUTxOWord}~pp))} \\~
+      \hldiff{\fun{inject}~(\fun{scaledMinDeposit}~v~(\fun{minUTxOValue}~pp))} \\~
       \\
       \hldiff{\forall txout \in \txouts{txb},} \\
       \hldiff{\fun{serSize}~(\fun{getValue}~txout) ~\leq ~\mathsf{MaxValSize}} \\~\\

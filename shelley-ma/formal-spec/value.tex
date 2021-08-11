@@ -3,14 +3,15 @@
 
 In this chapter we introduce an algebraic structure, $\ValMonoid$,
 which we define to be a monoid with several additional functions.
+We call this structure a \emph{value monoid}.
 The monoidal structure and additional functions represent the
 features required in order to treat terms as \emph{assets},
 which includes the ability to do certain accounting operations on them (addition, etc.),
 as well as some other operations (see below).
 These operations are used to describe the ShelleyMA transaction processing rules
-without indicating what concrete type the $\ValMonoid$ monoid must be.
+without fixing a concrete underlying $\ValMonoid$.
 
-In order to give a concrete ledger specification, a concrete type
+In order to give a concrete ledger specification, a specific type
 endowed with $\ValMonoid$ structure must be used in its place.
 Depending on the concrete type selected for this purpose,
 we obtain distinct ledgers. In particular, we get
@@ -22,7 +23,7 @@ we obtain distinct ledgers. In particular, we get
 \end{itemize}
 
 Below we give the definitions of all the functions that must be defined on
-$\Coin$ and $\Value$ in order for them to have the structure of $\ValMonoid$.
+$\Coin$ and $\Value$ in order for them to have the structure of a $\ValMonoid$.
 In Section \ref{sec:other-valmonoids} we give several other types which we can meaningfully
 support the definition of the required functions (addition, size, etc.), including
 an optimized representation that more accurately represents the ledger implementation
@@ -34,7 +35,15 @@ usecases.
 \subsection{$\ValMonoid$}
 
 Figure \ref{fig:ValMonoid} gives names and types of functions which
-make up the $\ValMonoid$ structure.
+make up the $\ValMonoid$ structure. Note that we use shorthand notation
+for pointwise comparisons of $\ValMonoid$ terms elsewhere in te spec. That is,
+we overload the notations for
+
+\[ =,~<,~>,~\leq,~\geq \]
+
+And use these binary relation operators in place of the following functions, respectively
+
+\[ \fun{pointwise}~(=),~\fun{pointwise}~(<),~\fun{pointwise}~(>),~\fun{pointwise}~(\leq),~\fun{pointwise}~(\geq) \]
 
 %%
 %% Figure ValMonoid and its Functions
@@ -57,16 +66,6 @@ make up the $\ValMonoid$ structure.
       & \text{Scale $\mathsf{ValType}$ value by integral constant}
       \nextdef
       %
-      & (-) ~\in~ \mathsf{ValType} \to \mathsf{ValType} \to \mathsf{ValType}\\
-      & v_1~-~v_2 ~=~ v_1~+~((-1)~*~v_2)\\
-      & \text{Subtraction on $\mathsf{ValType}$}
-      \nextdef
-      %
-      & \fun{isZero} ~\in~ \mathsf{ValType} \to \Bool\\
-      & \fun{isZero}~v~=~(v~==~\fun{zero}) \\
-      & \text{Is a given $\mathsf{ValType}$ term the additive identity?}
-      \nextdef
-      %
       & \fun{coin} ~\in~ \mathsf{ValType} \to \Coin\\
       & \text{Return the Ada contained in a $\mathsf{ValType}$ term}
       \nextdef
@@ -84,10 +83,6 @@ make up the $\ValMonoid$ structure.
       & \text{Check if a given $\mathsf{ValType}$ term contains only Ada}
       \nextdef
       %
-      & \fun{modifyCoin} ~\in~ (\Coin \to \Coin) \to (\mathsf{ValType} \to \mathsf{ValType})\\
-      & \text{Modify the Ada part of $\mathsf{ValType}$}
-      \nextdef
-      %
       & \fun{size} ~\in~ \mathsf{ValType} \to \MemoryEstimate\\
       & \text{Return the size in words of a $\mathsf{ValType}$ term}
       \nextdef
@@ -99,18 +94,10 @@ make up the $\ValMonoid$ structure.
   \label{fig:ValMonoid}
 \end{figure}
 
-Note that any $\ValMonoid$ must also have the following function, which gives
-the size of the serialized representation of a term of the underlying type.
-This function is used in the UTXO rule.
-We do not include it in the monoid definition because it cannot be defined
-explicity separately from concrete implementation.
-
-\[ \fun{serSize} ~\in~ \mathsf{ValType} \to \MemoryEstimate \]
-
 \subsection{$\Coin$ in the Allegra era}
 
 For the Allegra era, we require the $\ValMonoid$ asset representation to support
-only a single asset, Ada, whose type we call $\Coin$. This section defines the
+only a single asset, Ada, represented via $\Coin$. This section defines the
 $\ValMonoid$ functions for the $\Coin$ type, see Figure
 \ref{fig:coin}. Addition and multiplication are defined in the usual way
 (as on $\Integer$).
@@ -137,9 +124,6 @@ should be replaced with the abstract $\ValMonoid$.
       & \fun{inject} ~=~ \fun{id}_{\Coin}
       \nextdef
       %
-      & \fun{modifyCoin} ~=~ \fun{id}_{(\Coin \to \Coin)}
-      \nextdef
-      %
       & \fun{size}~\wcard ~=~ 0
       \nextdef
       %
@@ -160,18 +144,19 @@ these functions give the identity on $\Coin$, but composed in the opposite order
 
 \[\fun{inject} \circ \fun{coin}\]
 
-they return a $\ValMonoid$ containing only the Ada tokens contained in the original $\ValMonoid$.
+they return a $\ValMonoid$ term containing only the Ada tokens contained in the original $\ValMonoid$ term.
 
 \textbf{Fungible and non-fungible tokens.}
 Recall that a token is said to be fungible at a specific time (slot $s$, for example) if
-there are two or more tokens in existence on the ledger that are indistinguishable from
-each other, ie. they have the exact same identifier. Tokens with the same
+there is another token in existence on the ledger from which it is indistinguishable,
+ie. they have the exact same identifier. In the case of this specification,
+this identifier is an $\AssetID$ or the $\Coin$ type. Tokens with the same
 identifier are fungible with each other, but not with tokens with a different identifier.
 
 If there exists only a single
 token with a given identifier, it is said to be unique (or non-fungible).
 The usual meaning of \emph{non-fungible token} implies, additionally to the
-requirement that a token is unique on the ledger at a given time, that
+requirement that a token is unique on the ledger at a particular time, that
 it is programmatically guaranteed to remain unique indefinitely. This
 type of guarantee can be encoded in a minting policy.
 
@@ -179,11 +164,11 @@ type of guarantee can be encoded in a minting policy.
 \subsection{Multi-assets and $\Value$ in the Mary Era}
 
 Terms of the $\Value$ type represent heterogeneous collections of assets,
-both user-defined, and Ada. In place of the abstract $\ValMonoid$ structure,
-this type is used in the concrete Mary era ledger.
+both user-defined, and Ada. The Mary era ledger fixes the underlying $\ValMonoid$ to
+$\Value$ in order to introduce multi-asset support.
 This section describes the type $\Value$, the operations required on
 it, its relation to $\Coin$. It also as gives the definitions of the
-$\ValMonoid$ functions on $\Value$.
+$\ValMonoid$ functions for $\Value$.
 
 Figure \ref{fig:defs:value} introduces the basic types that make up the $\Value$ type,
 as well as defining the functions required to for $\Value$ to be a $\ValMonoid$.
@@ -224,10 +209,6 @@ as well as defining the functions required to for $\Value$ to be a $\ValMonoid$.
     & \fun{inject}~c  ~=~ \mathsf{AdaID}~\mapsto_0~\var{c}
     \nextdef
     %
-    & \fun{modifyCoin}~\var{f}~\var{v}  ~=~ \{~\var{aid}~\mapsto_0~\var{q}~\in~\var{v}~\vert~\var{aid}~\neq~\mathsf{AdaID}~\}~
-    \cup~\{~\mathsf{AdaID}~\mapsto_0~\var{f}~(c)~\}
-    \nextdef
-    %
     & \fun{size} ~~~ \text{see Section \ref{sec:value-size}}
   \end{align*}
   \caption{$\ValMonoid$ Function Definitions and Auxiliary Functions for Value}
@@ -258,7 +239,10 @@ as well as defining the functions required to for $\Value$ to be a $\ValMonoid$.
   minting arbitrary collections of fungible and unique tokens under a single policy.
 
   \item $\mathsf{AdaID}$ is a special asset ID for Ada, different than all other asset IDs.
-  It does not include a policy, and so does not allow Ada to ever be minted or burned.
+  It is a term of the single-term type $\AdaIDType$.
+  It does not include a policy, so instead, the validation outcome in the presence
+  of Ada in the $\fun{mint}$ field of the transaction is specified in the UTXO
+  ledger rule. The rule disallows the $\fun{mint}$ field to contain Ada.
 
   \item $\Quantity$ is an integer type that represents an amount of a specific $\AssetName$. We associate
     a term $q\in\Quantity$ with a specific token to track how much of that token is contained in a given asset value.
@@ -301,6 +285,7 @@ We sometimes refer to Ada as the primary or principal currency. Ada does not,
 for the purposes of the Mary ledger spec, have a $\PolicyID$ or an $\AssetName$.
 
 \subsection{Pointwise Value Operations and Partial Order}
+
 We have a number of operations on $\Value$ left to define for it to have
 $\ValMonoid$ structure. These are binary relations, addition, and
 scalar multiplication. These are all done

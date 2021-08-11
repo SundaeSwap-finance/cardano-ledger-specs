@@ -44,19 +44,18 @@ replaces the $\Coin$ type with a type the terms of which are bundles of arbitrar
 
 In this specification, we represent all the places where the $\Coin$ type is used in Allegra,
 and the $\Value$ type in Mary, as $\ValMonoid$. This is not itself a type, but an
-abstract algebraic structure representing any type that has certain functions defined on its terms,
+abstract algebraic structure that can be fixed to be any type that has certain functions defined on its terms,
 such as addition of two terms,
 a size function, etc. (see Section \ref{sec:value} for details). These functions
 are used in the ShelleyMA definitions, and are interpreted as functions on either
 $\Coin$ or $\Value$, depending on the era.
 
-Introducing the $\ValMonoid$ abstraction
+Introducing the $\ValMonoid$ structure
 \begin{itemize}
-  \item makes this document is a specification for Allegra when we take $\ValMonoid$
-  to be $\Coin$, and therefore transitions rules use the $\Coin$-specific functions
-  as defined in Section \ref{sec:value},
-  \item makes it a specification for Mary when we take $\ValMonoid$ to be
-  $\Value$, and apply $\Value$-specific functions in the rules.
+  \item makes this document is a specification for Allegra when we fix the $\ValMonoid$
+  to be $\Coin$, and
+  \item makes it a specification for Mary when we fix $\ValMonoid$ to be
+  $\Value$.
 \end{itemize}
 
 Note that this spec is for two distinct eras, but we give only one translations, which is

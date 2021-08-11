@@ -4,7 +4,7 @@
 In Shelley, the protocol parameter $\var{minUTxOValue}$ is used to
 disincentivize attacking nodes by putting many small outputs on the
 UTxO, permanently blocking memory. In the Mary era
-and onwards, the $\ValMonoid$ type replaces $\Coin$ in UTxO map. $\ValMonoid$ terms
+and onwards, the $\ValMonoid$ is $\Value$, rather than $\Coin$ (as in Allegra). $\Value$ terms
 can potentially be arbitrarily large, so the ledger requires each $\UTxO$ entry to
 contain a minimum amount of Ada, proportional to its size.
 
@@ -23,10 +23,8 @@ causing the output to be come unspendable (these are just a two examples) :
   outputs are impossible to fit inside a single transaction
 \end{itemize}
 
-Note that since this ShelleyMA specification is written in terms of the abstract
-class $\ValMonoid$, the constraints involving both the serialized size and the upper bound estimate
-on the size of a term of any type with $\ValMonoid$ structure must hold.
-Two types are used to define concrete ledgers, $\Coin$ and $\Value_C$.
+The same considerations apply for any underlying $\ValMonoid$ we choose to fix.
+In the ShelleyMA eras, the two types that are used to define concrete ledgers are $\Coin$ and $\Value_C$.
 The size calculations for $\Coin$, in practice,
 result in either trivial restrictions in the ledger rules,
 or ones that align with Shelley (as discussed in Section \ref{sec:utxo}).
@@ -41,8 +39,8 @@ sizes of $\Value_C$ terms.
   \emph{Abstract Functions}
   %
   \begin{align*}
-    & \fun{serSize} \in \ValMonoid \to \MemoryEstimate \\
-    & \text{Gives the size of the serialized representation of a $\ValMonoid$}
+    & \fun{serialize} \in \wcard \to \ByteString \\
+    & \text{Serialization function on an arbitrary (serializable) type}
     \nextdef
     & \fun{anameLen} \in \AssetName \to \MemoryEstimate \\
     & \text{Returns the length (in bytes) of an asset name}
@@ -50,6 +48,9 @@ sizes of $\Value_C$ terms.
   %
   \emph{Helper Functions}
   \begin{align*}
+    & \fun{serSize} \in \ValMonoid \to \MemoryEstimate \\
+    & \fun{serSize}~v~=~\|~\fun{serialize}~{v}~\| \\
+    & \text{Gives the size of the serialized representation of a $\ValMonoid$} \\
     & \fun{numAssets} \in \Value_C \to \N \\
     & \fun{numAssets}~{vl}~=~\|~\{~(pid, an)~\vert~pid~(\mapsto~(an~\mapsto~\wcard))~\in~vl~\}~\| \\
     & \text{Returns the number of distinct asset IDs in a $\Value_C$}
@@ -66,15 +67,20 @@ sizes of $\Value_C$ terms.
   \label{fig:size-helper}
 \end{figure*}
 
-The function $\fun{serSize}$, unlike the functions $\fun{size}$ and $\fun{utxoEntrySize}$
-    (explained below), is left abstract. It returns the actual number of bytes a
-    term (of a type with $\ValMonoid$ structure)
-    occupies in the serialized transaction (and hence is implementation-dependent).
+For a serializable type, the function $\fun{serialize}$ is defined on that type. We do not
+specify serialization functions here, but the CDDL specification gives the encoding
+details (see \cite{alonzoCDDL}). We give this function here because it is the
+first time it is used in the specification, but it is not specific to
+multi-assets, Mary, or Allegra in any way.
 
-    One reason for this design decision is that the $\fun{serSize}$ function is used constrain
+The function $\fun{serSize}$ returns the actual number of bytes in the bytestring that is the
+    serialized representation of a $\ValMonoid$-type term. The specific underlying $\ValMonoid$
+    is required to be serializable in every era.
+
+    The $\fun{serSize}$ function is used constrain
     the serialized representation of the transaction (in particular, the size
-    of $\Value_C$ terms in outputs), whereas the min-Ada requirement is about
-    the in-memory representation size. Moreover, a transparently-calculated size estimate
+    of $\Value_C$ terms in outputs), whereas the min-Ada requirement is a calculation based on
+    the in-memory representation size. A transparently-calculated size estimate
     is not necessary for limiting the size of values in outputs, since this size-bound
     check does not place any additional accounting/monetary constranits on transaction construction,
     unlike the min-Ada requirement.
@@ -107,12 +113,12 @@ of the size of a UTxO entry, and the associated min-Ada-value.
     \end{cases} \\
     & \text{Calculate the size of a $\Value_C$}
     \nextdef
-    & \fun{adaPerUTxOWord}~\in \PParams \to \Coin \\
-    & \fun{adaPerUTxOWord}~pp = \lfloor~ (\fun{minUTxOValue}~pp~/~ \mathsf{adaOnlyUTxOSize})~ \rfloor \\
+    & \fun{coinsPerUTxOWord}~\in \Coin \to \Coin \\
+    & \fun{coinsPerUTxOWord}~\var{mv} = \lfloor~ (\var{mv}~/~ \mathsf{adaOnlyUTxOSize})~ \rfloor \\
     & \text{Calculate the cost of storing a memory unit of data as a UTxO entry}
     \nextdef
-    & \fun{utxoEntrySize} \in \TxOut \to \MemoryEstimate \\
-    & \fun{utxoEntrySize}~\var{out} = \mathsf{utxoEntrySizeWithoutVal} + \fun{size}~ (\fun{getValue}~out) \\
+    & \fun{utxoEntrySize} \in \ValMonoid \to \MemoryEstimate \\
+    & \fun{utxoEntrySize}~\var{v} = \mathsf{utxoEntrySizeWithoutVal} + \fun{size}~\var{v} \\
     & \text{Calculate the size of a UTxO entry}
 \end{align*}
 \caption{Value Size Calculation}
@@ -143,23 +149,22 @@ This constant is in fact an upper bound on UTxOs which have have only Shelley cr
 We use this size estimate
 to calculate what $\fun{minUTxOValue}$ implies to be the min-Ada value requirement
 \emph{per word} of UTxO data.
-
-The function $\fun{adaPerUTxOWord}$ performs this calculation by dividing the
-min-Ada value by the Ada-only UTxO size.
+The function $\fun{coinsPerUTxOWord}$ performs this calculation by dividing the
+min-Ada value by the Ada-only UTxO size (and taking the floor).
 
 The $\mathsf{utxoEntrySizeWithoutVal}$ is the constant representing
-the size of a UTxO entry, not counting the size of the $\Value_C$ term it contains.
-Here, again, the actual size of a UTxO (excluding the $\Value_C$) can vary, but
+the size of a UTxO entry, not counting the size of the $\ValMonoid$ term it contains.
+Here, again, the actual size of a UTxO (excluding the $\ValMonoid$ term) can vary, but
 we use an upper bound on the size of Shelley-credential UTxOs.
 
 The function $\fun{utxoEntrySize}$ estimates the size of an arbitrary ShelleyMA-era
-UTxO. It adds the size estimate of the $\Value_C$ term in a UTxO and the
+UTxOs. It adds the size estimate of the $\ValMonoid$ term in a UTxO and the
 $\mathsf{utxoEntrySizeWithoutVal}$ constant.
 
-The constants used in the implementation of the Alonzo era are as follows :
+The constants used in the implementation of the ShelleyMA eras are as follows :
 
 \begin{itemize}
-  \item $(k_0, k_1, k_2, k_3, k_4) = (2, 6, 12, 28, 8)$
+  \item $(k_0, k_1, k_2, k_3, k_4) = (1, 6, 12, 28, 8)$
   \item $\mathsf{utxoEntrySizeWithoutVal} = 27$ words (8 bytes)
   \item $\mathsf{adaOnlyUTxOSize} = 27$ words (8 bytes)
   \item $\mathsf{MaxValSize} = 4000$ bytes, ie. 500 words.
