@@ -83,6 +83,7 @@ import qualified Plutus.V1.Ledger.Api as P
     always,
     dataToBuiltinData,
     evaluateScriptRestricting,
+    evaluateScriptCounting,
     from,
     lowerBound,
     singleton,
@@ -105,6 +106,8 @@ import Shelley.Spec.Ledger.TxBody
     WitVKey (..),
   )
 import Shelley.Spec.Ledger.UTxO (UTxO (..))
+import System.IO.Unsafe
+import qualified Data.Text as Text
 
 -- =========================================================
 -- Translate Hashes, Credentials, Certificates etc.
@@ -361,15 +364,18 @@ valContext txinfo sp = Data (P.toData (P.ScriptContext txinfo (transScriptPurpos
 
 -- | Run a Plutus Script, given the script and the bounds on resources it is allocated.
 runPLCScript :: CostModel -> SBS.ShortByteString -> ExUnits -> [P.Data] -> Bool
-runPLCScript (CostModel cost) scriptbytestring units ds =
-  case P.evaluateScriptRestricting
+runPLCScript (CostModel cost) scriptbytestring units ds = unsafePerformIO $
+  case P.evaluateScriptCounting
     P.Quiet
     cost
-    (transExUnits units)
     scriptbytestring
     ds of
-    (_, Left _e) -> False -- trace ("\nrunPLC fails "++show _e++"\nData = "++show ds) False
-    (_, Right ()) -> True
+    (ls, Left _e) -> do
+      appendFile "/home/ec2-user/script.log" $ "\nrunPLC fails "++show _e++"\nData = "++show ds++"\nLogs = "++unlines (Text.unpack <$> ls)
+      return False
+    (ls, Right exunits) -> do
+      appendFile "/home/ec2-user/script.log" $ "\nrunPLC succeeds, required "++(show exunits)++"\n\nLogs:\n"++unlines (Text.unpack <$> ls)
+      return True
 
 validPlutusdata :: P.Data -> Bool
 validPlutusdata (P.Constr _n ds) = all validPlutusdata ds
