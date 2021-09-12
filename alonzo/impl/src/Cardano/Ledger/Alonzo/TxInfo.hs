@@ -105,6 +105,7 @@ import qualified Plutus.V1.Ledger.Api as P
     adaToken,
     always,
     dataToBuiltinData,
+    evaluateScriptCounting,
     evaluateScriptRestricting,
     from,
     fromData,
@@ -131,6 +132,9 @@ import Shelley.Spec.Ledger.TxBody
     WitVKey (..),
   )
 import Shelley.Spec.Ledger.UTxO (UTxO (..))
+import System.IO
+import System.IO.Unsafe
+import qualified Data.Text as Text
 
 -- =========================================================
 -- Translate Hashes, Credentials, Certificates etc.
@@ -472,118 +476,25 @@ debugPlutus db =
 -- we try to track why a script failed (if it does) by the [String] in the Fails constructor of ScriptResut.
 
 -- | Run a Plutus Script, given the script and the bounds on resources it is allocated.
-runPLCScript ::
-  forall era.
-  Show (Script era) =>
-  Proxy era ->
-  CostModel ->
-  SBS.ShortByteString ->
-  ExUnits ->
-  [P.Data] ->
-  ScriptResult
-runPLCScript proxy (CostModel cost) scriptbytestring units ds =
-  case P.evaluateScriptRestricting
-    P.Quiet
+runPLCScript :: Proxy e -> CostModel -> SBS.ShortByteString -> ExUnits -> [P.Data] -> ScriptResult
+runPLCScript _ (CostModel cost) scriptbytestring units ds = unsafePerformIO $
+  case P.evaluateScriptCounting
+    P.Verbose
     cost
-    (transExUnits units)
     scriptbytestring
     ds of
-    (_, Left e) -> explain_plutus_failure proxy scriptbytestring e ds (CostModel cost) units
-    (_, Right ()) -> Passes
-
--- | Explin why a script might fail. Scripts come in two flavors. 1) with 3  data arguments [data,redeemer,context]
---   and  2) with 2 data arguments [redeemer,context]. It pays to decode the context data into a real context
---   because that provides way more information. But there is no guarantee the context data really can be decoded.
-explain_plutus_failure ::
-  forall era.
-  Show (Script era) =>
-  Proxy era ->
-  SBS.ShortByteString ->
-  P.EvaluationError ->
-  [P.Data] ->
-  CostModel ->
-  ExUnits ->
-  ScriptResult
-explain_plutus_failure _proxy scriptbytestring e ds@[dat, redeemer, info] cm eu =
-  -- A three data argument script.
-  let ss :: Script era
-      ss = PlutusScript scriptbytestring
-      name :: String
-      name = show ss
-   in case P.fromData info of
-        Nothing -> Fails [PlutusFailure line db]
-          where
-            line =
-              pack $
-                unlines
-                  [ "\nThe 3 arg plutus script (" ++ name ++ ") fails.",
-                    show e,
-                    "The data is: " ++ show dat,
-                    "The redeemer is: " ++ show redeemer,
-                    "The third data argument, does not decode to a context\n" ++ show info
-                  ]
-            db = B64.encode . serialize' $ PlutusDebug cm eu scriptbytestring ds PlutusV1
-        Just info2 -> Fails [PlutusFailure line db]
-          where
-            info3 = show (pretty (info2 :: P.ScriptContext))
-            line =
-              pack $
-                unlines
-                  [ "\nThe 3 arg plutus script (" ++ name ++ ") fails.",
-                    show e,
-                    "The data is: " ++ show dat,
-                    "The redeemer is: " ++ show redeemer,
-                    "The context is:\n" ++ info3
-                  ]
-            db = B64.encode . serialize' $ PlutusDebug cm eu scriptbytestring ds PlutusV1
-explain_plutus_failure _proxy scriptbytestring e ds@[redeemer, info] cm eu =
-  -- A two data argument script.
-  let ss :: Script era
-      ss = PlutusScript scriptbytestring
-      name :: String
-      name = show ss
-   in case P.fromData info of
-        Nothing -> Fails [PlutusFailure line db]
-          where
-            line =
-              pack $
-                unlines
-                  [ "\nThe 2 arg plutus script (" ++ name ++ ") fails.",
-                    show e,
-                    "The redeemer is: " ++ show redeemer,
-                    "The second data argument, does not decode to a context\n" ++ show info
-                  ]
-            db = B64.encode . serialize' $ PlutusDebug cm eu scriptbytestring ds PlutusV1
-        Just info2 -> Fails [PlutusFailure line db]
-          where
-            info3 = show (pretty (info2 :: P.ScriptContext))
-            line =
-              pack $
-                unlines
-                  [ "\nThe 2 arg plutus script (" ++ name ++ ") fails.",
-                    show e,
-                    "The redeemer is: " ++ show redeemer,
-                    "The context is:\n" ++ info3
-                  ]
-            db = B64.encode . serialize' $ PlutusDebug cm eu scriptbytestring ds PlutusV1
-explain_plutus_failure _proxy scriptbytestring e ds cm eu =
-  -- A script with the wrong number of arguments
-  Fails [PlutusFailure line db]
-  where
-    ss :: Script era
-    ss = PlutusScript scriptbytestring
-    name :: String
-    name = show ss
-    line =
-      pack $
-        unlines
-          ( [ "\nThe plutus script (" ++ name ++ ") fails.",
-              show e,
-              "It was passed these " ++ show (Prelude.length ds) ++ " data arguments."
-            ]
-              ++ map show ds
-          )
-    db = B64.encode . serialize' $ PlutusDebug cm eu scriptbytestring ds PlutusV1
+    (ls, Left _e) -> do
+      let msg = "\nrunPLC fails "++show _e++"\nData = "++show ds++"\nLogs = "++unlines (Text.unpack <$> ls)
+      appendFile "/home/ubuntu/script.log" msg
+      putStrLn msg
+      hPutStrLn stderr msg
+      return $ Fails []
+    (ls, Right exunits) -> do
+      let msg = "\nrunPLC succeeds, required "++(show exunits)++"\n\nLogs:\n"++unlines (Text.unpack <$> ls)
+      appendFile "/home/ubuntu/script.log" msg
+      putStrLn msg
+      hPutStrLn stderr msg
+      return Passes
 
 validPlutusdata :: P.Data -> Bool
 validPlutusdata (P.Constr _n ds) = all validPlutusdata ds
